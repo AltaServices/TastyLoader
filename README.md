@@ -1,6 +1,6 @@
 ### Usage
 Maven plugin to use in loadable plugins.
-```
+```xml
 <plugin>
   <groupId>org.apache.maven.plugins</groupId>
   <artifactId>maven-antrun-plugin</artifactId>
@@ -26,4 +26,4 @@ Maven plugin to use in loadable plugins.
 </plugin>
 ```
 
-download the .bat file and put it in the project base folder
+download the loader.bat file and put it in the project base folder
