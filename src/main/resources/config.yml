@@ -1,10 +1,6 @@
-repo: "http://your-plugin-repo-url"
+repo: "https://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@github.com/Tc554/loader-releases/raw/main"
 loadables:
-  plugin1:
-    jarName: "example-plugin1"
+  example:
+    jarName: "example"
     priority: 1
-    enabled: true
-  plugin2:
-    jarName: "example-plugin2"
-    priority: 2
     enabled: true
