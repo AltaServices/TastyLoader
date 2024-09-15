@@ -1,15 +1,19 @@
 package me.tastycake
 
-import org.bukkit.Bukkit
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.configuration.serialization.ConfigurationSerialization
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.URL
-import java.nio.file.Files
-import java.io.InputStream
-import java.nio.file.StandardCopyOption
 import java.net.URLClassLoader
+import java.nio.file.Files
+import java.util.*
+
 
 /**
  * @author Cupoftea & Tasty Cake
@@ -21,6 +25,8 @@ class TastyLoader : JavaPlugin() {
     companion object {
         @JvmStatic
         private var instance: TastyLoader? = null
+
+        private const val TOKEN = "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"
     }
 
     override fun onEnable() {
@@ -39,7 +45,7 @@ class TastyLoader : JavaPlugin() {
             if (loadable.enable) {
                 try {
                     downloadPlugin(repo, loadable.jarName)
-                    loadPlugin(File(dataFolder, "${loadable.jarName}.jar"))
+                    loadPlugin(File("$dataFolder/loaded", "${loadable.jarName}.jar"))
                 } catch (e: Exception) {
                     logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
                 }
@@ -49,12 +55,36 @@ class TastyLoader : JavaPlugin() {
 
     private fun downloadPlugin(repo: String, jarName: String): File {
         val url = URL("$repo/$jarName.jar")
-        val destination = File(dataFolder, "$jarName.jar")
-        url.openStream().use { input: InputStream ->
-            Files.copy(input, destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        val connection = url.openConnection() as HttpURLConnection
+        val authHeader = "Bearer $TOKEN"
+        connection.setRequestProperty("Authorization", authHeader)
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
+
+        val responseCode = connection.responseCode
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            val inputStream = connection.inputStream
+            val destination = File("$dataFolder/loaded", "$jarName.jar")
+            Files.createDirectories(destination.parentFile.toPath())
+            val outputStream = destination.outputStream()
+
+            try {
+                inputStream.use { input ->
+                    outputStream.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (e: Exception) {
+                logger.severe("Failed to download or write file: ${e.message}")
+                throw e
+            }
+
+            logger.info("Downloaded $jarName.jar")
+            return destination
+        } else {
+            logger.severe("HTTP error code: $responseCode")
+            throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
         }
-        logger.info("Downloaded $jarName.jar")
-        return destination
     }
 
     private fun loadPlugin(file: File) {
@@ -94,12 +124,13 @@ class TastyLoader : JavaPlugin() {
     }
 
     override fun onDisable() {
+        val folder = File("$dataFolder/loaded")
+        folder.deleteRecursively()
+
         val config: FileConfiguration = this.config
         val loadables = getLoadablesFromConfig(config)
 
-        val sortedLoadables = loadables.values.sortedBy { it.priority }
-
-        for (loadable in sortedLoadables) {
+        for (loadable in loadables.values) {
             if (loadable.enable) {
                 unloadPlugin(loadable.jarName)
             }

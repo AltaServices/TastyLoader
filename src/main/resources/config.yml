@@ -1,4 +1,4 @@
-repo: "https://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@github.com/Tc554/loader-releases/raw/main"
+repo: "https://raw.githubusercontent.com/Tc554/loader-releases/main"
 loadables:
   example:
     jarName: "example"
