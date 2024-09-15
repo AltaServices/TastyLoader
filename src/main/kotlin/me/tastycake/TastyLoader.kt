@@ -31,9 +31,7 @@ class TastyLoader : JavaPlugin() {
         val config: FileConfiguration = this.config
 
         val repo = config.getString("repo") ?: throw IllegalStateException("Repo Url is not specified in config")
-        val loadables = config.getConfigurationSection("loadables")?.getValues(false)?.mapValues { (_, value) ->
-            if (value is Loadable) value else Loadable.deserialize(value as Map<String, Any>)
-        } ?: emptyMap()
+        val loadables = getLoadablesFromConfig(config)
 
         val sortedLoadables = loadables.values.sortedBy { it.priority }
 
@@ -41,7 +39,7 @@ class TastyLoader : JavaPlugin() {
             if (loadable.enable) {
                 try {
                     downloadPlugin(repo, loadable.jarName)
-                    loadPlugin(File(loadable.jarName))
+                    loadPlugin(File(dataFolder, "${loadable.jarName}.jar"))
                 } catch (e: Exception) {
                     logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
                 }
@@ -95,20 +93,28 @@ class TastyLoader : JavaPlugin() {
         unloadPlugin(pluginName)
     }
 
-
-
     override fun onDisable() {
         val config: FileConfiguration = this.config
-        val loadables = config.getConfigurationSection("loadables")?.getValues(false) ?. mapValues { (_, value) ->
-            if (value is Loadable) value else Loadable.deserialize(value as Map<String, Any>)
-        } ?: emptyMap()
+        val loadables = getLoadablesFromConfig(config)
 
-        val sortedLoadables = loadables.values.sortedBy{ it.priority }
+        val sortedLoadables = loadables.values.sortedBy { it.priority }
 
         for (loadable in sortedLoadables) {
             if (loadable.enable) {
                 unloadPlugin(loadable.jarName)
             }
         }
+    }
+
+    private fun getLoadablesFromConfig(config: FileConfiguration): Map<String, Loadable> {
+        val loadablesSection = config.getConfigurationSection("loadables")
+        return loadablesSection?.getKeys(false)?.associateWith { key ->
+            val section = loadablesSection.getConfigurationSection(key)
+            Loadable(
+                jarName = section?.getString("jarName") ?: "",
+                priority = section?.getInt("priority") ?: 0,
+                enable = section?.getBoolean("enabled") ?: true
+            )
+        } ?: emptyMap()
     }
 }
