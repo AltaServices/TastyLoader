@@ -45,7 +45,7 @@ class TastyLoader : JavaPlugin() {
             if (loadable.enable) {
                 try {
                     downloadPlugin(repo, loadable.jarName)
-                    loadPlugin(File("$dataFolder/loaded", "${loadable.jarName}.jar"))
+                    loadPlugin(File("${dataFolder}/loaded", "${loadable.jarName}.jar"))
                 } catch (e: Exception) {
                     logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
                 }
