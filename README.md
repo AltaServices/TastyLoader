@@ -26,4 +26,4 @@ Maven plugin to use in loadable plugins.
 </plugin>
 ```
 
-download the loader.bat file and put it in the project base folder
+download the loader.bat file, change the TOKEN to your github token and put it in the project base folder
