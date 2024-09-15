@@ -1,0 +1,5 @@
+name: TastyLoader
+version: '1.0'
+main: me.tastycake.TastyLoader
+authors: cupoftea, tastycake
+api-version: '1.20'
