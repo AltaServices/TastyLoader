@@ -1,3 +1,8 @@
+## TastyLoader
+#### What is TastyLoader?
+TastyLoader is a github based plugin loader for maven plugin projects, you need to have a repository that will store all your plugin jars, it will automatically update the plugin's jar on compile and load it into the server
+you shouldn't put your plugin jars in the server plugins folder, only the TastyLoader jar, TastyLoader will make sure to load your plugins automatically.
+
 ### Setup SSH for your github (one time only, doesnt need to if you have SSH for github set up already!)
 1. Enable OpenSSH if its disabled, search for "Services" in your windows search and run as admin, find OpenSSH Authentication Agent, then, Right Click > Properties > Startup type - set to "Automatic" then click "Apply" and "OK" the open this menu again and click on "Start" then you can apply and close.
 2. Go to your user folder, example "C:\Users\user" and create a new folder named ".ssh"
@@ -8,6 +13,7 @@
 7. Test if it works `ssh -T git@github.com` if you got this response `Hi username! You've successfully authenticated...` you are good to go!
 
 ### Usage in loadable maven plugin project
+#### ! THIS WILL ONLY RUN WHEN YOU DO "mvn install" ! - Can be changed to your preferred command in the <phase></phases> tag.
 Maven plugin to use in loadable plugins. Change the "GITHUB_REPO" if needed! (this is the repo that has all your loadable jars)
 ```xml
 <plugin>
