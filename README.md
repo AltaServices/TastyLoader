@@ -13,7 +13,7 @@ loadables:
     priority: 1
     enabled: true
 ```
-"repo" is the repository that will store all your plugin jars, make sure to use github's raw content.
+"repo" is the repository that will store all your plugin jars, make sure to use github's raw content and provide the correct branch.
 "loadables" is a list of all the loadable files.
 "jarName" is the jar name of the plugin, the stored jar name in the repository without the .jar at the end.
 "priority" priority is to set the loading order, higher priority = load faster.
