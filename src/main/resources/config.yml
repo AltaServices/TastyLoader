@@ -1,4 +1,4 @@
-repo: "https://raw.githubusercontent.com/Tc554/loader-releases/main"
+repo: "https://raw.githubusercontent.com/YourGitHubUsername/your-plugin-repo/main"
 loadables:
   example:
     jarName: "example"
