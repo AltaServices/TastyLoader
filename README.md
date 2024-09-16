@@ -1,5 +1,5 @@
 ## TastyLoader
-#### What is TastyLoader?
+### What is TastyLoader & Introduction
 TastyLoader is a github based plugin loader for maven plugin projects, you need to have a repository that will store all your plugin jars, it will automatically update the plugin's jar on compile and load it into the server
 you shouldn't put your plugin jars in the server plugins folder, only the TastyLoader jar, TastyLoader will make sure to load your plugins automatically.
 
