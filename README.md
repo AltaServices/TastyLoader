@@ -27,6 +27,14 @@ loadables:
 5. Open your cmd and generate an SSH: `ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`, run `powershell` in your cmd and then run `Get-Content C:\Users\user\.ssh\gitssh.pub` (this will copy your key) go to [GitHub SSH Settings](https://github.com/settings/keys) and click "New SSH Key" give it a name and paste the key then save it
 6. Save it to known hosts `ssh-keyscan github.com >> C:/Users/user/.ssh/known_hosts`
 7. Test if it works `ssh -T git@github.com` if you got this response `Hi username! You've successfully authenticated...` you are good to go!
+8. if still after all of that it doesn't work create a file named "config" in your `.ssh` folder, open it in notepad or something and add this:
+```
+Host github.com
+   HostName github.com
+   User git
+   IdentityFile ~/.ssh/gitssh
+   IdentitiesOnly yes
+```
 
 ### Usage in loadable maven plugin project
 #### ! THIS WILL ONLY RUN WHEN YOU DO "mvn install" ! - Can be changed to your preferred command in the <phase></phases> tag.
