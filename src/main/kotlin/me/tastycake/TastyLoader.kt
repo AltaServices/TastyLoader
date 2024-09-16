@@ -123,6 +123,19 @@ class TastyLoader : JavaPlugin() {
         unloadPlugin(pluginName)
     }
 
+
+    private fun getLoadablesFromConfig(config: FileConfiguration): Map<String, Loadable> {
+        val loadablesSection = config.getConfigurationSection("loadables")
+        return loadablesSection?.getKeys(false)?.associateWith { key ->
+            val section = loadablesSection.getConfigurationSection(key)
+            Loadable(
+                jarName = section?.getString("jarName") ?: "",
+                priority = section?.getInt("priority") ?: 0,
+                enable = section?.getBoolean("enabled") ?: true
+            )
+        } ?: emptyMap()
+    }
+
     override fun onDisable() {
         val folder = File("$dataFolder/loaded")
         folder.deleteRecursively()
@@ -135,17 +148,5 @@ class TastyLoader : JavaPlugin() {
                 unloadPlugin(loadable.jarName)
             }
         }
-    }
-
-    private fun getLoadablesFromConfig(config: FileConfiguration): Map<String, Loadable> {
-        val loadablesSection = config.getConfigurationSection("loadables")
-        return loadablesSection?.getKeys(false)?.associateWith { key ->
-            val section = loadablesSection.getConfigurationSection(key)
-            Loadable(
-                jarName = section?.getString("jarName") ?: "",
-                priority = section?.getInt("priority") ?: 0,
-                enable = section?.getBoolean("enabled") ?: true
-            )
-        } ?: emptyMap()
     }
 }
