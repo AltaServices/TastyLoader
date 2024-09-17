@@ -12,19 +12,28 @@ TastyLoader is a GitHub-based plugin loader for Bukkit/Spigot servers. It stream
 - [Usage in Loadable Maven Plugin Project](#usage-in-loadable-maven-plugin-project)
 - [License](#license)
 
+## Key Features
+
+- Automatic plugin download from GitHub repositories
+- Priority-based loading order
+- Dynamic plugin management (load/unload at runtime)
+- Support for private repositories with GitHub token authentication
+- Configurable through YAML file
+
 ## Getting Started
 
 ### Prerequisites
 
 - Bukkit/Spigot server (Tested on 1.20.4)
 - Java Development Kit (JDK) 8 or higher
+- Kotlin runtime (included in the plugin JAR)
 
 ### Installation
 
-1. Clone the TastyLoader repository.
-2. Build the project or use the pre-built JAR file.
-3. Place the TastyLoader JAR in your server's `plugins` folder.
-4. Start your server to generate the default configuration file.
+1. Download the latest TastyLoader JAR from the releases page.
+2. Place the TastyLoader JAR in your server's `plugins` folder.
+3. Start your server to generate the default configuration file.
+4. Configure the `config.yml` file in the `plugins/TastyLoader` directory.
 
 ## Configuration
 
@@ -44,7 +53,7 @@ loadables:
 - `github_token`: Your GitHub Personal Access Token for authentication when downloading plugins from private repositories.
 - `loadables`: A list of all the plugins to be managed by TastyLoader.
   - `jarName`: The name of the plugin JAR file without the .jar extension.
-  - `priority`: Sets the loading order (higher priority = load faster).
+  - `priority`: Sets the loading order (lower numbers load first).
   - `enabled`: Determines if TastyLoader should load this plugin.
 
 ## How It Works
@@ -55,25 +64,25 @@ loadables:
 
 2. **Loading Process**: 
    - Plugins are loaded in order of their specified priority.
-   - Downloaded JARs are stored in the `plugins/TastyLoader/loaded` directory.
+   - Downloaded JARs are stored in temporary files.
    - The plugin uses Bukkit's plugin manager to load and enable each JAR.
 
 3. **Unloading Process**: 
    - On server shutdown, TastyLoader unloads all plugins it has loaded.
-   - The `loaded` directory is cleaned up to remove downloaded JARs.
+   - Temporary files are cleaned up.
 
 4. **Error Handling**: 
    - TastyLoader logs errors for failed downloads or loading attempts.
    - It continues to load other plugins even if one fails.
 
 5. **Dynamic Management**: 
-   - The `unloadSpecificPlugin` function allows for runtime unloading of specific plugins if needed.
+   - The `deactivateSpecificPlugin` function allows for runtime unloading of specific plugins if needed.
 
 ## Usage in Loadable Maven Plugin Project
 
 For plugin developers who want their plugins to be compatible with TastyLoader, ensure your plugin follows standard Bukkit plugin structure and is compiled as a JAR file.
 
-#### Maven Plugin Configuration
+### Maven Plugin Configuration
 
 Add the following plugin configuration to your `pom.xml` file. This will automatically update your plugin JAR in the specified GitHub repository when you run `mvn install`.
 

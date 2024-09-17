@@ -20,10 +20,10 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-
 /**
+ * TastyLoader: A plugin loader for developer quality of life
  * @author Cupoftea & Tasty Cake
- * @date 9/15/2024
+ * @date 9/17/2024
  */
 
 
@@ -34,53 +34,56 @@ class TastyLoader : JavaPlugin() {
     }
 
     private lateinit var githubToken: String
-
-    private val loadedPlugins = ConcurrentHashMap<String, File>()
+    private val managedPlugins = ConcurrentHashMap<String, File>()
 
     override fun onEnable() {
         instance = this
         ConfigurationSerialization.registerClass(Loadable::class.java)
 
+        // Load configuration
         saveDefaultConfig()
         val config: FileConfiguration = this.config
 
         githubToken = config.getString("github_token") ?: ""
 
-        val repo = config.getString("repo") ?: throw IllegalStateException("Repo Url is not specified in config")
-        val loadables = getLoadablesFromConfig(config)
+        val repoUrl = config.getString("repo") ?: throw IllegalStateException("Repository URL is not specified in config")
+        val pluginConfigs = parsePluginConfigs(config)
 
-        val sortedLoadables = loadables.values.sortedBy { it.priority }
+        // Sort plugins by priority and load them
+        val sortedPluginConfigs = pluginConfigs.values.sortedBy { it.priority }
 
-        for (loadable in sortedLoadables) {
-            if (loadable.enable) {
+        for (pluginConfig in sortedPluginConfigs) {
+            if (pluginConfig.enable) {
                 try {
-                    downloadAndLoadPlugin(repo, loadable.jarName)
+                    fetchAndInitializePlugin(repoUrl, pluginConfig.jarName)
                         .thenAccept { /* Plugin loaded successfully */ }
                         .exceptionally { e ->
-                            logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
+                            logger.severe("Failed to load plugin ${pluginConfig.jarName}: ${e.message}")
                             null
                         }
                 } catch (e: Exception) {
-                    logger.severe("Failed to initiate loading of plugin ${loadable.jarName}: ${e.message}")
+                    logger.severe("Failed to initiate loading of plugin ${pluginConfig.jarName}: ${e.message}")
                 }
             }
         }
     }
 
-    private fun downloadAndLoadPlugin(repo: String, jarName: String): CompletableFuture<Unit> {
-        return downloadPlugin(repo, jarName)
+    // Fetch plugin JAR from repository and initialize it
+    private fun fetchAndInitializePlugin(repoUrl: String, jarName: String): CompletableFuture<Unit> {
+        return fetchPluginJar(repoUrl, jarName)
             .thenCompose { jarBytes ->
-                val tempFile = createTempJarFile(jarName, jarBytes)
-                loadedPlugins[jarName] = tempFile
-                loadPlugin(tempFile)
+                val tempFile = createTemporaryJarFile(jarName, jarBytes)
+                managedPlugins[jarName] = tempFile
+                initializePlugin(tempFile)
             }
     }
 
-    private fun downloadPlugin(repo: String, jarName: String): CompletableFuture<ByteArray> {
+    // Download plugin JAR file from the repository
+    private fun fetchPluginJar(repoUrl: String, jarName: String): CompletableFuture<ByteArray> {
         val future = CompletableFuture<ByteArray>()
         object : BukkitRunnable() {
             override fun run() {
-                val url = URL("$repo/$jarName.jar")
+                val url = URL("$repoUrl/$jarName.jar")
                 val connection = url.openConnection() as HttpURLConnection
                 if (githubToken.isNotEmpty()) {
                     val authHeader = "Bearer $githubToken"
@@ -104,14 +107,16 @@ class TastyLoader : JavaPlugin() {
         return future
     }
 
-    private fun createTempJarFile(jarName: String, jarBytes: ByteArray): File {
+    // Create a temporary file for the downloaded JAR
+    private fun createTemporaryJarFile(jarName: String, jarBytes: ByteArray): File {
         val tempFile = Files.createTempFile("tastyloader_", "_$jarName.jar").toFile()
         tempFile.deleteOnExit()
         Files.write(tempFile.toPath(), jarBytes)
         return tempFile
     }
 
-    private fun loadPlugin(file: File) : CompletableFuture<Unit> {
+    // Load and enable the plugin from the JAR file
+    private fun initializePlugin(file: File) : CompletableFuture<Unit> {
         val future = CompletableFuture<Unit>()
 
         object : BukkitRunnable() {
@@ -133,7 +138,8 @@ class TastyLoader : JavaPlugin() {
         return future
     }
 
-    private fun unloadPlugin(pluginName: String) {
+    // Unload and disable a specific plugin
+    private fun deactivatePlugin(pluginName: String) {
         val plugin = server.pluginManager.getPlugin(pluginName)
         if (plugin != null) {
             server.pluginManager.disablePlugin(plugin)
@@ -149,31 +155,35 @@ class TastyLoader : JavaPlugin() {
         } else {
             logger.warning("Plugin $pluginName not found or already unloaded")
         }
-        loadedPlugins.remove(pluginName)?.delete()
+        managedPlugins.remove(pluginName)?.delete()
     }
 
-    fun unloadSpecificPlugin(pluginName: String) {
-        unloadPlugin(pluginName)
+    // Public method to unload a specific plugin
+    fun deactivateSpecificPlugin(pluginName: String) {
+        deactivatePlugin(pluginName)
     }
 
     override fun onDisable() {
+        // Clean up temporary files
         val folder = File("$dataFolder/loaded")
         folder.deleteRecursively()
 
+        // Unload all managed plugins
         val config: FileConfiguration = this.config
-        val loadables = getLoadablesFromConfig(config)
+        val pluginConfigs = parsePluginConfigs(config)
 
-        for (loadable in loadables.values) {
-            if (loadable.enable) {
-                unloadPlugin(loadable.jarName)
+        for (pluginConfig in pluginConfigs.values) {
+            if (pluginConfig.enable) {
+                deactivatePlugin(pluginConfig.jarName)
             }
         }
 
-        loadedPlugins.values.forEach { it.delete() }
-        loadedPlugins.clear()
+        managedPlugins.values.forEach { it.delete() }
+        managedPlugins.clear()
     }
 
-    private fun getLoadablesFromConfig(config: FileConfiguration): Map<String, Loadable> {
+    // Parse plugin configurations from the config file
+    private fun parsePluginConfigs(config: FileConfiguration): Map<String, Loadable> {
         val loadablesSection = config.getConfigurationSection("loadables")
         return loadablesSection?.getKeys(false)?.associateWith { key ->
             val section = loadablesSection.getConfigurationSection(key)
