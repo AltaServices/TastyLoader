@@ -14,8 +14,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 
@@ -33,6 +35,8 @@ class TastyLoader : JavaPlugin() {
 
     private lateinit var githubToken: String
 
+    private val loadedPlugins = ConcurrentHashMap<String, File>()
+
     override fun onEnable() {
         instance = this
         ConfigurationSerialization.registerClass(Loadable::class.java)
@@ -40,7 +44,6 @@ class TastyLoader : JavaPlugin() {
         saveDefaultConfig()
         val config: FileConfiguration = this.config
 
-        // Load GitHub token from config
         githubToken = config.getString("github_token") ?: ""
 
         val repo = config.getString("repo") ?: throw IllegalStateException("Repo Url is not specified in config")
@@ -51,20 +54,30 @@ class TastyLoader : JavaPlugin() {
         for (loadable in sortedLoadables) {
             if (loadable.enable) {
                 try {
-                    downloadPlugin(repo, loadable.jarName)
-                        .thenAccept {
-                            loadPlugin(File("$dataFolder/loaded", "${loadable.jarName}.jar"))
-                                .get(10, TimeUnit.SECONDS)
+                    downloadAndLoadPlugin(repo, loadable.jarName)
+                        .thenAccept { /* Plugin loaded successfully */ }
+                        .exceptionally { e ->
+                            logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
+                            null
                         }
                 } catch (e: Exception) {
-                    logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
+                    logger.severe("Failed to initiate loading of plugin ${loadable.jarName}: ${e.message}")
                 }
             }
         }
     }
 
-    private fun downloadPlugin(repo: String, jarName: String): CompletableFuture<File> {
-        val future = CompletableFuture<File>()
+    private fun downloadAndLoadPlugin(repo: String, jarName: String): CompletableFuture<Unit> {
+        return downloadPlugin(repo, jarName)
+            .thenCompose { jarBytes ->
+                val tempFile = createTempJarFile(jarName, jarBytes)
+                loadedPlugins[jarName] = tempFile
+                loadPlugin(tempFile)
+            }
+    }
+
+    private fun downloadPlugin(repo: String, jarName: String): CompletableFuture<ByteArray> {
+        val future = CompletableFuture<ByteArray>()
         object : BukkitRunnable() {
             override fun run() {
                 val url = URL("$repo/$jarName.jar")
@@ -78,29 +91,9 @@ class TastyLoader : JavaPlugin() {
 
                 val responseCode = connection.responseCode
                 if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val inputStream = connection.inputStream
-                    val destination = File("$dataFolder/loaded", "$jarName.jar")
-                    Files.createDirectories(destination.parentFile.toPath())
-
-                    if (destination.exists()) {
-                        destination.delete()
-                    }
-
-                    val outputStream = destination.outputStream()
-
-                    try {
-                        inputStream.use { input ->
-                            outputStream.use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        logger.severe("Failed to download or write file: ${e.message}")
-                        throw e
-                    }
-
+                    val bytes = connection.inputStream.use { it.readBytes() }
                     logger.info("Downloaded $jarName.jar")
-                    future.complete(destination)
+                    future.complete(bytes)
                 } else {
                     logger.severe("HTTP error code: $responseCode")
                     throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
@@ -109,6 +102,13 @@ class TastyLoader : JavaPlugin() {
         }.runTaskAsynchronously(this)
 
         return future
+    }
+
+    private fun createTempJarFile(jarName: String, jarBytes: ByteArray): File {
+        val tempFile = Files.createTempFile("tastyloader_", "_$jarName.jar").toFile()
+        tempFile.deleteOnExit()
+        Files.write(tempFile.toPath(), jarBytes)
+        return tempFile
     }
 
     private fun loadPlugin(file: File) : CompletableFuture<Unit> {
@@ -149,6 +149,7 @@ class TastyLoader : JavaPlugin() {
         } else {
             logger.warning("Plugin $pluginName not found or already unloaded")
         }
+        loadedPlugins.remove(pluginName)?.delete()
     }
 
     fun unloadSpecificPlugin(pluginName: String) {
@@ -167,6 +168,9 @@ class TastyLoader : JavaPlugin() {
                 unloadPlugin(loadable.jarName)
             }
         }
+
+        loadedPlugins.values.forEach { it.delete() }
+        loadedPlugins.clear()
     }
 
     private fun getLoadablesFromConfig(config: FileConfiguration): Map<String, Loadable> {
