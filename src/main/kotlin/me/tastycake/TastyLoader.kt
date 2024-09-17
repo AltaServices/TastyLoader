@@ -30,7 +30,7 @@ class TastyLoader : JavaPlugin() {
         @JvmStatic
         private var instance: TastyLoader? = null
 
-        private const val TOKEN = "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"
+        private val TOKEN = System.getenv("GITHUB_TOKEN") ?: ""
     }
 
     override fun onEnable() {
@@ -66,8 +66,10 @@ class TastyLoader : JavaPlugin() {
             override fun run() {
                 val url = URL("$repo/$jarName.jar")
                 val connection = url.openConnection() as HttpURLConnection
-                val authHeader = "Bearer $TOKEN"
-                connection.setRequestProperty("Authorization", authHeader)
+                if (TOKEN.isNotEmpty()) {
+                    val authHeader = "Bearer $TOKEN"
+                    connection.setRequestProperty("Authorization", authHeader)
+                }
                 connection.connectTimeout = 10000
                 connection.readTimeout = 10000
 
