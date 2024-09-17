@@ -8,7 +8,6 @@ TastyLoader is a GitHub-based plugin loader for Bukkit/Spigot servers. It stream
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
 - [Configuration](#configuration)
-- [Environment Variables](#environment-variables)
 - [How It Works](#how-it-works)
 - [Usage in Loadable Maven Plugin Project](#usage-in-loadable-maven-plugin-project)
 - [License](#license)
@@ -19,52 +18,40 @@ TastyLoader is a GitHub-based plugin loader for Bukkit/Spigot servers. It stream
 
 - Bukkit/Spigot server (Tested on 1.20.4)
 - Java Development Kit (JDK) 8 or higher
-- Access to set environment variables on your server
 
 ### Installation
 
 1. Clone the TastyLoader repository.
 2. Build the project or use the pre-built JAR file.
 3. Place the TastyLoader JAR in your server's `plugins` folder.
-4. Set up the required environment variable (see [Environment Variables](#environment-variables) section).
-5. Start your server to generate the default configuration file.
+4. Start your server to generate the default configuration file.
 
 ## Configuration
 
 TastyLoader uses a `config.yml` file for its configuration. Here's an example:
 
 ```yaml
-repo: "https://raw.githubusercontent.com/YourGitHubUsername/your-plugin-repo/main"
+repo: "https://raw.githubusercontent.com/yourusername/yourrepository/main"
+github_token: "your_github_token_here"
 loadables:
-  example-plugin:
-    jarName: "ExamplePlugin"
+  example:
+    jarName: "example"
     priority: 1
     enabled: true
-  another-plugin:
-    jarName: "AnotherPlugin"
-    priority: 2
-    enabled: false
 ```
 
 - `repo`: The GitHub repository URL that stores your plugin JARs. Use the raw content URL and provide the correct branch.
+- `github_token`: Your GitHub Personal Access Token for authentication when downloading plugins from private repositories.
 - `loadables`: A list of all the plugins to be managed by TastyLoader.
   - `jarName`: The name of the plugin JAR file without the .jar extension.
   - `priority`: Sets the loading order (higher priority = load faster).
   - `enabled`: Determines if TastyLoader should load this plugin.
 
-## Environment Variables
-
-TastyLoader uses environment variables for sensitive information:
-
-- `GITHUB_TOKEN`: Your GitHub Personal Access Token for authentication when downloading plugins from private repositories.
-
-Make sure to set this environment variable before starting your Minecraft server.
-
 ## How It Works
 
 1. **Plugin Download**: 
    - TastyLoader downloads plugin JARs from the specified GitHub repository.
-   - If a GitHub token is provided via the `GITHUB_TOKEN` environment variable, it's used for authentication, allowing access to private repositories.
+   - If a GitHub token is provided in the config, it's used for authentication, allowing access to private repositories.
 
 2. **Loading Process**: 
    - Plugins are loaded in order of their specified priority.
