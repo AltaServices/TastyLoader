@@ -2,9 +2,11 @@ package me.tastycake
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.internal.wait
 import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.configuration.serialization.ConfigurationSerialization
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.scheduler.BukkitRunnable
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -13,6 +15,8 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Files
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -45,7 +49,10 @@ class TastyLoader : JavaPlugin() {
             if (loadable.enable) {
                 try {
                     downloadPlugin(repo, loadable.jarName)
-                    loadPlugin(File("$dataFolder/loaded", "${loadable.jarName}.jar"))
+                        .thenAccept {
+                            loadPlugin(File("$dataFolder/loaded", "${loadable.jarName}.jar"))
+                                .get(10, TimeUnit.SECONDS)
+                        }
                 } catch (e: Exception) {
                     logger.severe("Failed to load plugin ${loadable.jarName}: ${e.message}")
                 }
@@ -53,52 +60,67 @@ class TastyLoader : JavaPlugin() {
         }
     }
 
-    private fun downloadPlugin(repo: String, jarName: String): File {
-        val url = URL("$repo/$jarName.jar")
-        val connection = url.openConnection() as HttpURLConnection
-        val authHeader = "Bearer $TOKEN"
-        connection.setRequestProperty("Authorization", authHeader)
-        connection.connectTimeout = 10000
-        connection.readTimeout = 10000
+    private fun downloadPlugin(repo: String, jarName: String): CompletableFuture<File> {
+        val future = CompletableFuture<File>()
+        object : BukkitRunnable() {
+            override fun run() {
+                val url = URL("$repo/$jarName.jar")
+                val connection = url.openConnection() as HttpURLConnection
+                val authHeader = "Bearer $TOKEN"
+                connection.setRequestProperty("Authorization", authHeader)
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
 
-        val responseCode = connection.responseCode
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            val inputStream = connection.inputStream
-            val destination = File("$dataFolder/loaded", "$jarName.jar")
-            Files.createDirectories(destination.parentFile.toPath())
-            val outputStream = destination.outputStream()
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val inputStream = connection.inputStream
+                    val destination = File("$dataFolder/loaded", "$jarName.jar")
+                    Files.createDirectories(destination.parentFile.toPath())
+                    val outputStream = destination.outputStream()
 
-            try {
-                inputStream.use { input ->
-                    outputStream.use { output ->
-                        input.copyTo(output)
+                    try {
+                        inputStream.use { input ->
+                            outputStream.use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        logger.severe("Failed to download or write file: ${e.message}")
+                        throw e
                     }
-                }
-            } catch (e: Exception) {
-                logger.severe("Failed to download or write file: ${e.message}")
-                throw e
-            }
 
-            logger.info("Downloaded $jarName.jar")
-            return destination
-        } else {
-            logger.severe("HTTP error code: $responseCode")
-            throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
-        }
+                    logger.info("Downloaded $jarName.jar")
+                    future.complete(destination)
+                } else {
+                    logger.severe("HTTP error code: $responseCode")
+                    throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
+                }
+            }
+        }.runTaskAsynchronously(this)
+
+        return future
     }
 
-    private fun loadPlugin(file: File) {
-        try {
-            val plugin = server.pluginManager.loadPlugin(file)
-            if (plugin != null) {
-                server.pluginManager.enablePlugin(plugin)
-                logger.info("Loaded and enabled ${plugin.name}")
-            } else {
-                logger.warning("Failed to load plugin from file ${file.name}")
+    private fun loadPlugin(file: File) : CompletableFuture<Unit> {
+        val future = CompletableFuture<Unit>()
+
+        object : BukkitRunnable() {
+            override fun run() {
+                try {
+                    val plugin = server.pluginManager.loadPlugin(file)
+                    if (plugin != null) {
+                        future.complete(server.pluginManager.enablePlugin(plugin))
+                        logger.info("Loaded and enabled ${plugin.name}")
+                    } else {
+                        logger.warning("Failed to load plugin from file ${file.name}")
+                    }
+                } catch (e: Exception) {
+                    logger.severe("Error loading plugin from file ${file.name}: ${e.message}")
+                }
             }
-        } catch (e: Exception) {
-            logger.severe("Error loading plugin from file ${file.name}: ${e.message}")
-        }
+        }.runTaskAsynchronously(this)
+
+        return future
     }
 
     private fun unloadPlugin(pluginName: String) {
