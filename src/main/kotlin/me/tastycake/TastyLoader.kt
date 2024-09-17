@@ -29,9 +29,9 @@ class TastyLoader : JavaPlugin() {
     companion object {
         @JvmStatic
         private var instance: TastyLoader? = null
-
-        private val TOKEN = System.getenv("GITHUB_TOKEN") ?: ""
     }
+
+    private lateinit var githubToken: String
 
     override fun onEnable() {
         instance = this
@@ -39,6 +39,9 @@ class TastyLoader : JavaPlugin() {
 
         saveDefaultConfig()
         val config: FileConfiguration = this.config
+
+        // Load GitHub token from config
+        githubToken = config.getString("github_token") ?: ""
 
         val repo = config.getString("repo") ?: throw IllegalStateException("Repo Url is not specified in config")
         val loadables = getLoadablesFromConfig(config)
@@ -66,8 +69,8 @@ class TastyLoader : JavaPlugin() {
             override fun run() {
                 val url = URL("$repo/$jarName.jar")
                 val connection = url.openConnection() as HttpURLConnection
-                if (TOKEN.isNotEmpty()) {
-                    val authHeader = "Bearer $TOKEN"
+                if (githubToken.isNotEmpty()) {
+                    val authHeader = "Bearer $githubToken"
                     connection.setRequestProperty("Authorization", authHeader)
                 }
                 connection.connectTimeout = 10000

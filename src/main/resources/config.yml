@@ -1,4 +1,5 @@
 repo: "https://raw.githubusercontent.com/YourGitHubUsername/your-plugin-repo/main"
+github_token: "your_github_token_here"
 loadables:
   example:
     jarName: "example"
