@@ -1,4 +1,4 @@
-package me.tastycake
+package gg.vapour
 
 import org.bukkit.configuration.serialization.ConfigurationSerializable
 import org.bukkit.configuration.serialization.SerializableAs

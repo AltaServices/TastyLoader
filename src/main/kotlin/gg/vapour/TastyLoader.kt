@@ -1,4 +1,4 @@
-package me.tastycake
+package gg.vapour
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
