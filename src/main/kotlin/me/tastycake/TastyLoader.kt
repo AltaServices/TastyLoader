@@ -78,6 +78,11 @@ class TastyLoader : JavaPlugin() {
                     val inputStream = connection.inputStream
                     val destination = File("$dataFolder/loaded", "$jarName.jar")
                     Files.createDirectories(destination.parentFile.toPath())
+
+                    if (destination.exists()) {
+                        destination.delete()
+                    }
+
                     val outputStream = destination.outputStream()
 
                     try {
