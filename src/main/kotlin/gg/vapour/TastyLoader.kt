@@ -19,6 +19,7 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.*
 
 /**
  * TastyLoader: A plugin loader for developer quality of life
@@ -35,6 +36,7 @@ class TastyLoader : JavaPlugin() {
 
     private lateinit var githubToken: String
     private val managedPlugins = ConcurrentHashMap<String, File>()
+    private var generalDelay: Long = 1000 // Default delay of 1 second
 
     override fun onEnable() {
         instance = this
@@ -45,66 +47,56 @@ class TastyLoader : JavaPlugin() {
         val config: FileConfiguration = this.config
 
         githubToken = config.getString("github_token") ?: ""
+        generalDelay = config.getLong("general_delay", 1000)
 
         val repoUrl = config.getString("repo") ?: throw IllegalStateException("Repository URL is not specified in config")
         val pluginConfigs = parsePluginConfigs(config)
 
-        // Sort plugins by priority and load them
-        val sortedPluginConfigs = pluginConfigs.values.sortedBy { -it.priority }
+        // Sort plugins by priority (lower numbers first)
+        val sortedPluginConfigs = pluginConfigs.values.sortedBy { it.priority }
 
-        for (pluginConfig in sortedPluginConfigs) {
-            if (pluginConfig.enable) {
-                try {
-                    fetchAndInitializePlugin(repoUrl, pluginConfig.jarName)
-                        .thenAccept { /* Plugin loaded successfully */ }
-                        .exceptionally { e ->
-                            logger.severe("Failed to load plugin ${pluginConfig.jarName}: ${e.message}")
-                            null
-                        }
-                } catch (e: Exception) {
-                    logger.severe("Failed to initiate loading of plugin ${pluginConfig.jarName}: ${e.message}")
+        runBlocking {
+            for (pluginConfig in sortedPluginConfigs) {
+                if (pluginConfig.enable) {
+                    try {
+                        fetchAndInitializePlugin(repoUrl, pluginConfig.jarName)
+                        delay(generalDelay)
+                    } catch (e: Exception) {
+                        logger.severe("Failed to load plugin ${pluginConfig.jarName}: ${e.message}")
+                    }
                 }
             }
         }
     }
 
     // Fetch plugin JAR from repository and initialize it
-    private fun fetchAndInitializePlugin(repoUrl: String, jarName: String): CompletableFuture<Unit> {
-        return fetchPluginJar(repoUrl, jarName)
-            .thenCompose { jarBytes ->
-                val tempFile = createTemporaryJarFile(jarName, jarBytes)
-                managedPlugins[jarName] = tempFile
-                initializePlugin(tempFile)
-            }
+    private suspend fun fetchAndInitializePlugin(repoUrl: String, jarName: String) {
+        val jarBytes = fetchPluginJar(repoUrl, jarName)
+        val tempFile = createTemporaryJarFile(jarName, jarBytes)
+        managedPlugins[jarName] = tempFile
+        initializePlugin(tempFile)
     }
 
     // Download plugin JAR file from the repository
-    private fun fetchPluginJar(repoUrl: String, jarName: String): CompletableFuture<ByteArray> {
-        val future = CompletableFuture<ByteArray>()
-        object : BukkitRunnable() {
-            override fun run() {
-                val url = URL("$repoUrl/$jarName.jar")
-                val connection = url.openConnection() as HttpURLConnection
-                if (githubToken.isNotEmpty()) {
-                    val authHeader = "Bearer $githubToken"
-                    connection.setRequestProperty("Authorization", authHeader)
-                }
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
+    private suspend fun fetchPluginJar(repoUrl: String, jarName: String): ByteArray = withContext(Dispatchers.IO) {
+        val url = URL("$repoUrl/$jarName.jar")
+        val connection = url.openConnection() as HttpURLConnection
+        if (githubToken.isNotEmpty()) {
+            val authHeader = "Bearer $githubToken"
+            connection.setRequestProperty("Authorization", authHeader)
+        }
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
 
-                val responseCode = connection.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val bytes = connection.inputStream.use { it.readBytes() }
-                    logger.info("Downloaded $jarName.jar")
-                    future.complete(bytes)
-                } else {
-                    logger.severe("HTTP error code: $responseCode")
-                    throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
-                }
-            }
-        }.runTaskAsynchronously(this)
-
-        return future
+        val responseCode = connection.responseCode
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            val bytes = connection.inputStream.use { it.readBytes() }
+            logger.info("Downloaded $jarName.jar")
+            bytes
+        } else {
+            logger.severe("HTTP error code: $responseCode")
+            throw IllegalStateException("Failed to download file: HTTP error code $responseCode")
+        }
     }
 
     // Create a temporary file for the downloaded JAR
@@ -116,26 +108,18 @@ class TastyLoader : JavaPlugin() {
     }
 
     // Load and enable the plugin from the JAR file
-    private fun initializePlugin(file: File) : CompletableFuture<Unit> {
-        val future = CompletableFuture<Unit>()
-
-        object : BukkitRunnable() {
-            override fun run() {
-                try {
-                    val plugin = server.pluginManager.loadPlugin(file)
-                    if (plugin != null) {
-                        future.complete(server.pluginManager.enablePlugin(plugin))
-                        logger.info("Loaded and enabled ${plugin.name}")
-                    } else {
-                        logger.warning("Failed to load plugin from file ${file.name}")
-                    }
-                } catch (e: Exception) {
-                    logger.severe("Error loading plugin from file ${file.name}: ${e.message}")
-                }
+    private suspend fun initializePlugin(file: File) = withContext(Dispatchers.Default) {
+        try {
+            val plugin = server.pluginManager.loadPlugin(file)
+            if (plugin != null) {
+                server.pluginManager.enablePlugin(plugin)
+                logger.info("Loaded and enabled ${plugin.name}")
+            } else {
+                logger.warning("Failed to load plugin from file ${file.name}")
             }
-        }.runTaskAsynchronously(this)
-
-        return future
+        } catch (e: Exception) {
+            logger.severe("Error loading plugin from file ${file.name}: ${e.message}")
+        }
     }
 
     // Unload and disable a specific plugin
