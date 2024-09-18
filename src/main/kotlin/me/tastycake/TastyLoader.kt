@@ -43,7 +43,7 @@ class TastyLoader : JavaPlugin() {
         val repo = config.getString("repo") ?: throw IllegalStateException("Repo Url is not specified in config")
         val loadables = getLoadablesFromConfig(config)
 
-        val sortedLoadables = loadables.values.sortedBy { it.priority }
+        val sortedLoadables = loadables.values.sortedBy { -it.priority }
 
         for (loadable in sortedLoadables) {
             if (loadable.enable) {
