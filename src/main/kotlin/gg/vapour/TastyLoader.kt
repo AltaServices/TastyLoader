@@ -53,7 +53,7 @@ class TastyLoader : JavaPlugin() {
         val pluginConfigs = parsePluginConfigs(config)
 
         // Sort plugins by priority (lower numbers first)
-        val sortedPluginConfigs = pluginConfigs.values.sortedBy { it.priority }
+        val sortedPluginConfigs = pluginConfigs.values.sortedBy { -it.priority }
 
         runBlocking {
             for (pluginConfig in sortedPluginConfigs) {
