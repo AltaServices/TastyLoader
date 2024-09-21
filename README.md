@@ -122,6 +122,8 @@ Add the following plugin configuration to your `pom.xml` file. This will automat
                         <arg value="/c"/>
                         <arg value="cd repo-dir &amp;&amp; git commit -m &quot;Updated jar&quot; &amp;&amp; git push ${GITHUB_REPO}"/>
                     </exec>
+
+                    <delete dir="repo-dir"/>
                 </target>
             </configuration>
         </execution>
