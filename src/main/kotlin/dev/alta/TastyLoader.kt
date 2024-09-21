@@ -1,4 +1,4 @@
-package gg.vapour
+package dev.alta
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,7 +28,7 @@ import kotlinx.coroutines.*
  */
 
 
-class TastyLoader : JavaPlugin() {
+ class TastyLoader : JavaPlugin() {
     companion object {
         @JvmStatic
         private var instance: TastyLoader? = null

@@ -1,4 +1,4 @@
-package gg.vapour
+package dev.alta
 
 import org.bukkit.configuration.serialization.ConfigurationSerializable
 import org.bukkit.configuration.serialization.SerializableAs
