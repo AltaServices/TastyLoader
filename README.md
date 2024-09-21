@@ -101,23 +101,23 @@ Add the following plugin configuration to your `pom.xml` file. This will automat
                 <target>
                     <!-- Change loader releases repository if needed -->
                     <property name="GITHUB_REPO" value="git@github.com:Tc554/loader-releases"/>
-    
+
                     <delete dir="repo-dir"/>
-    
+
                     <exec executable="cmd">
                         <arg value="/c"/>
                         <arg value="if not exist repo-dir ( git clone ${GITHUB_REPO} repo-dir ) else ( cd repo-dir &amp;&amp; git pull ${GITHUB_REPO} &amp;&amp; cd .. )"/>
                     </exec>
-    
+
                     <delete file="repo-dir/${project.build.finalName}.jar"/>
-    
+
                     <copy file="target/${project.build.finalName}.jar" tofile="repo-dir/${project.build.finalName}.jar"/>
-    
+
                     <exec executable="cmd">
                         <arg value="/c"/>
-                        <arg value="cd repo-dir &amp;&amp; git rm --cached ${project.build.finalName}.jar &amp;&amp; git add ${project.build.finalName}.jar"/>
+                        <arg value="cd repo-dir &amp;&amp; git add ${project.build.finalName}.jar"/>
                     </exec>
-    
+
                     <exec executable="cmd">
                         <arg value="/c"/>
                         <arg value="cd repo-dir &amp;&amp; git commit -m &quot;Updated jar&quot; &amp;&amp; git push ${GITHUB_REPO}"/>
