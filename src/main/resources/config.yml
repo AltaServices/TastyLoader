@@ -1,5 +1,5 @@
-repo: "https://raw.githubusercontent.com/Tc554/loader-releases/main"
-github_token: "your_github_token_here"
+repo: "https://raw.githubusercontent.com/username/loader-releases/main"
+github_token: "your_github_token_here" // should be changed into the actual loader file for security
 general_delay: 1000  # Delay in milliseconds between plugin loads
 loadables:
   example:
