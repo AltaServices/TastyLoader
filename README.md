@@ -1,4 +1,4 @@
-# TastyLoader
+# TastyLoader - NO LONGER SUPPORTED!
 
 TastyLoader is a GitHub-based plugin loader for Bukkit/Spigot servers. It streamlines the process of managing and updating plugins by automatically downloading, loading, and unloading plugin JARs from a specified GitHub repository. This plugin loader will get updates and improvements in the future. Please note there may be bugs and issues.
 
